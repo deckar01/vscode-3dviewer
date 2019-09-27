@@ -10,6 +10,13 @@ export default class MeshPreviewContentProvider implements TextDocumentContentPr
     private _disposables: Disposable[] = [];    
     private _onDidChange = new EventEmitter<Uri>();
 
+    panel = window.createWebviewPanel(
+        'catCoding',
+        'Cat Coding',
+        ViewColumn.One,
+        {}
+    );
+
     constructor(
         private context: ExtensionContext
     ) {
@@ -30,10 +37,12 @@ export default class MeshPreviewContentProvider implements TextDocumentContentPr
             workspace.registerTextDocumentContentProvider('preview3dhttps', this)
         );
 
-        this._disposables.push( commands.registerCommand("3dviewer.openInViewer", (fileUri: Uri) => {
+        this._disposables.push( commands.registerCommand("3dviewer.openInViewer", async (fileUri: Uri) => {
             if (fileUri) {
-                let previewUri = fileUri.with({scheme: 'preview3dfile'});
-                commands.executeCommand('vscode.previewHtml', previewUri, ViewColumn.Active, "3D Mesh Preview");
+                // let previewUri = fileUri.with({scheme: 'preview3dfile'});
+                let previewUri = this.panel.webview.asWebviewUri(fileUri);
+                // commands.executeCommand('vscode.previewHtml', previewUri, ViewColumn.Active, "3D Mesh Preview");
+                this.panel.webview.html = await this.provideTextDocumentContent(fileUri);
                 console.log(previewUri.toString());
             }
         }));
@@ -61,10 +70,12 @@ export default class MeshPreviewContentProvider implements TextDocumentContentPr
             MeshPreviewContentProvider.s_instance = null;
         }
         this._disposables.forEach(d => d.dispose());
+        this.panel.dispose()
     }
 
-    private getMediaPath(mediaFile: string): string {
-		return Uri.file(this.context.asAbsolutePath(path.join('media', mediaFile))).toString();
+    private getMediaPath(mediaFile: string): Uri {
+        const uri = Uri.file(this.context.asAbsolutePath(path.join('media', mediaFile)));
+        return this.panel.webview.asWebviewUri(uri);
     }
 
     private getSettings(uri: Uri): string {
@@ -101,19 +112,6 @@ export default class MeshPreviewContentProvider implements TextDocumentContentPr
     }
 
     public provideTextDocumentContent(uri: Uri): Thenable<string> {
-        switch(uri.scheme) {
-            case 'preview3dfile':
-                uri = uri.with({scheme: 'file'});
-                break;
-            case 'preview3dhttp':
-                uri = uri.with({scheme: 'http'});
-                break;
-            case 'preview3dhttps':
-                uri = uri.with({scheme: 'https'});
-                break;
-            default:
-                return null;
-        }
         return new Promise( async (resolve) => {
             resolve(`
             <!DOCTYPE html>
@@ -123,7 +121,7 @@ export default class MeshPreviewContentProvider implements TextDocumentContentPr
                     <meta charset="utf-8">
                     <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
                     ${this.getSettings(uri)}
-                    <base href="${this.getMediaPath('/')}">
+                    <!--base href="${this.getMediaPath('/')}"-->
                     <style>
                         body {
                             font-family: Monospace;
