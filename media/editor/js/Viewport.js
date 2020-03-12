@@ -8,7 +8,7 @@ var Viewport = function ( editor ) {
 
 	var container = new UI.Panel();
 	container.setId( 'viewport' );
-	container.setPosition( 'absolute' );
+	// container.setPosition( 'absolute' );
 
 	container.add( new Viewport.Info( editor ) );
 

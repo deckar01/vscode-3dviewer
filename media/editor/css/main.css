@@ -41,6 +41,11 @@ textarea, input { outline: none; } /* osx */
 	user-select: none;
 }
 
+#viewport {
+	float: left;
+	margin-right: 16px;
+}
+
 /* CodeMirror */
 
 .CodeMirror {
