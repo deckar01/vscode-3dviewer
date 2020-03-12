@@ -3,12 +3,14 @@
 import { Disposable, Uri, workspace, ExtensionContext, commands, ViewColumn, window } from 'vscode';
 
 import * as Path from 'path';
+import * as fs from "fs";
 
 export default class EditorProvider {
     
     private static s_instance?: EditorProvider = null;
     private static s_editorUri?: Uri = null;
     private _disposables: Disposable[] = [];
+    private editorPanel = null;
 
     constructor(
         private context: ExtensionContext
@@ -20,31 +22,59 @@ export default class EditorProvider {
         EditorProvider.s_editorUri = Uri.file(context.asAbsolutePath(Path.join('media', 'editor', 'index.html')));
         
         this._disposables.push( commands.registerCommand("3dviewer.openEditor", () => {
-            commands.executeCommand('vscode.previewHtml', EditorProvider.s_editorUri, ViewColumn.Active, "THREE.js Editor").then( (e) => {
-                this.patchEditor();
+            this.editorPanel = window.createWebviewPanel(
+                "threeJsEditor",
+                "THREE.js Editor",
+                ViewColumn.Active,
+                {
+                    localResourceRoots: [Uri.file(Path.join(context.extensionPath, "media"))],
+                    enableScripts: true
+                }
+            );
+            var file = fs.readFileSync(context.asAbsolutePath(Path.join("media", "editor", "index.html")));
+            var html = file.toString();
+            html = html.replace(/(src|href)="([^"]*)"/g, (_, a, b) => {
+                var path = this.editorPanel.webview.asWebviewUri(Uri.file(context.asAbsolutePath(Path.join("media", "editor", b))));
+                return `${a}="${path}"`;
             });
+            this.editorPanel.webview.html = html;
+            this.patchEditor();
         }) );
 
         this._disposables.push( commands.registerCommand("3dviewer.openInEditor", (fileUri: Uri) => {
-            commands.executeCommand('vscode.previewHtml', EditorProvider.s_editorUri, ViewColumn.Active, "THREE.js Editor").then( (e) => {
-                this.patchEditor();
-                EditorProvider.importFile(fileUri);
+            this.editorPanel = window.createWebviewPanel(
+                "threeJsEditor",
+                "THREE.js Editor",
+                ViewColumn.Active,
+                {
+                    localResourceRoots: [Uri.file(Path.join(context.extensionPath, "media"))],
+                    enableScripts: true
+                }
+            );
+            var file = fs.readFileSync(context.asAbsolutePath(Path.join("media", "editor", "index.html")));
+            var html = file.toString();
+            html = html.replace(/(src|href)="([^"]*)"/g, (_, a, b) => {
+                var path = this.editorPanel.webview.asWebviewUri(Uri.file(context.asAbsolutePath(Path.join("media", "editor", b))));
+                return `${a}="${path}"`;
             });
+            this.editorPanel.webview.html = html;
+            this.patchEditor();
+            this.importFile(fileUri);
         }) );
 
         this._disposables.push( commands.registerCommand("3dviewer.openUrlInEditor", () => {
             window.showInputBox({prompt: "Enter URL to open", placeHolder: "http://..."}).then((value) => {
                 if (value) {
                     let fileUri = Uri.parse(value);
-                    EditorProvider.importFile(fileUri);
+                    this.importFile(fileUri);
                 }
             });
         }) );
 
         this._disposables.push( commands.registerCommand("3dviewer.onMessage", EditorProvider.onMessage) );
         this._disposables.push( commands.registerCommand("3dviewer.displayString", EditorProvider.displayString) );
-        this._disposables.push( commands.registerCommand("3dviewer.sendCommand", EditorProvider.sendCommand) );
-        this._disposables.push( commands.registerCommand("3dviewer.importFile", EditorProvider.importFile) );
+        this._disposables.push( commands.registerCommand("3dviewer.sendCommand", this.sendCommand) );
+        this._disposables.push( commands.registerCommand("3dviewer.importFile", this.importFile) );
 
     }
 
@@ -52,15 +82,15 @@ export default class EditorProvider {
         return EditorProvider.s_instance;
     }
 
-    static sendCommand(command: string): Thenable<boolean> {
+    sendCommand(command: string): Thenable<boolean> {
         if (EditorProvider.s_editorUri) {
-            return commands.executeCommand<boolean>('_workbench.htmlPreview.postMessage', EditorProvider.s_editorUri, {eval: command})
+            return this.editorPanel.postMessage({ eval: command });
         }
         return Promise.resolve(false);
     }
 
-    static importFile(uri: Uri): Thenable<boolean> {
-        return EditorProvider.sendCommand(`
+    importFile(uri: Uri): Thenable<boolean> {
+        return this.sendCommand(`
             if (!window.fileLoader) {
                 window.fileLoader = new THREE.FileLoader();
                 window.fileLoader.crossOrigin = '';
@@ -78,7 +108,7 @@ export default class EditorProvider {
 
     // Inject script file on client in order to patch the editor functionalities
     private patchEditor() {
-        EditorProvider.sendCommand(`document.body.appendChild(document.createElement("script")).src="${this.context.asAbsolutePath(Path.join('media', 'editorPatch.js'))}"`);
+        this.sendCommand(`document.body.appendChild(document.createElement("script")).src="${this.editorPanel.webview.asWebviewUri(Uri.file(this.context.asAbsolutePath(Path.join('media', 'editorPatch.js'))))}"`);
     }
 
     private static onMessage(e) {
