@@ -35,11 +35,13 @@ Menubar.File = function ( editor ) {
 	option.setTextContent( 'New' );
 	option.onClick( function () {
 
-		if ( confirm( 'Any unsaved data will be lost. Are you sure?' ) ) {
+		// TODO: Modals require an iframe sandbox premission that VSCode won't allow devs to enable.
+		// Replace this with a VSCode message in modal mode.
+		// if ( confirm( 'Any unsaved data will be lost. Are you sure?' ) ) {
 
 			editor.clear();
 
-		}
+		// }
 
 	} );
 	options.add( option );

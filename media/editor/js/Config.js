@@ -2,6 +2,8 @@
  * @author mrdoob / http://mrdoob.com/
  */
 
+ // TODO: LocalStorage is not avilable in WebViews. Wire up message passing persistence.
+
 var Config = function ( name ) {
 
 	var storage = {
@@ -22,21 +24,21 @@ var Config = function ( name ) {
 		'settings/history': false
 	};
 
-	if ( window.localStorage[ name ] === undefined ) {
+	// if ( window.localStorage[ name ] === undefined ) {
 
-		window.localStorage[ name ] = JSON.stringify( storage );
+	// 	window.localStorage[ name ] = JSON.stringify( storage );
 
-	} else {
+	// } else {
 
-		var data = JSON.parse( window.localStorage[ name ] );
+	// 	var data = JSON.parse( window.localStorage[ name ] );
 
-		for ( var key in data ) {
+	// 	for ( var key in data ) {
 
-			storage[ key ] = data[ key ];
+	// 		storage[ key ] = data[ key ];
 
-		}
+	// 	}
 
-	}
+	// }
 
 	return {
 
@@ -54,15 +56,15 @@ var Config = function ( name ) {
 
 			}
 
-			window.localStorage[ name ] = JSON.stringify( storage );
+			// window.localStorage[ name ] = JSON.stringify( storage );
 
-			console.log( '[' + /\d\d\:\d\d\:\d\d/.exec( new Date() )[ 0 ] + ']', 'Saved config to LocalStorage.' );
+			// console.log( '[' + /\d\d\:\d\d\:\d\d/.exec( new Date() )[ 0 ] + ']', 'Saved config to LocalStorage.' );
 
 		},
 
 		clear: function () {
 
-			delete window.localStorage[ name ];
+			// delete window.localStorage[ name ];
 
 		}
 
